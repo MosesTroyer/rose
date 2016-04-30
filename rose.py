@@ -75,6 +75,8 @@ def import_commands():
         if command[-4:] != ".pyc":
             command = command[:-3]
 
+            log("Importing " + command + "...")
+
             module = getattr(__import__("commands." + command), command)
            
             COMMANDS_CONFIG[command] = getattr(module, "get_config")()
@@ -152,7 +154,10 @@ def handle_command(command):
             + "(" + command["user"] + "): " 
             + command["message"]
     )
-    COMMANDS[command["command"]](command, COMMANDS_CONFIG[command["command"]], get_config())
+    try:
+        COMMANDS[command["command"]](command, COMMANDS_CONFIG[command["command"]], get_config())
+    except KeyError:
+        pass
 
 #parse the arguments of the command and return an object
 def parse_args(command):
@@ -182,7 +187,7 @@ def parse_args(command):
 
 if __name__ == "__main__":
 
-    logging.basicConfig(filename='rose.log', level=logging.DEBUG, format="%(message)s")
+    logging.basicConfig(filename=NICK + '.log', level=logging.DEBUG, format="%(message)s")
 
     import_commands()
 
