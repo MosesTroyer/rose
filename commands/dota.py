@@ -17,8 +17,8 @@ def dota(command, config, bot_config):
     except IndexError:
         return
 
-    url = "https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/V001/?key=2D080924B952D141CEBA3FB6B15AB6EC&match_id=" + match
-
+    url = "https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/V001/?key???&match_id=" + match
+    
     response = requests.get(url)
 
     if(response.ok):
