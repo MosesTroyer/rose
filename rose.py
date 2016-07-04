@@ -1,23 +1,23 @@
-import socket, logging, os, random
+import socket, logging, os, random, json
 
 """
-Rosencrantz, the IRC Bot
+Rose, the IRC Bot
 Moses Troyer 2016
 """
 
-#TODO Load config - may not work because of method implementation
 #TODO possible to load different imports, depending on slack vs irc?
 #TODO for example, import slack / import irc for these global methods and overhead methods
-#TODO use YASP.co for dota sheit + ?json=1
 #TODO trigger on certain words
+#TODO Spotify api?
 
-SERVER = "localhost"
-PORT = 6667
-NICK = "rose"
-USER = NICK
-CHAN = "#moses"
+# perms
+# each method has a permission setting
+# if defined at whitelist or admin
+# main declines
+# method to add or remove
+# blacklist ignores all
 
-PREFIX = "!"
+CONFIG = None 
 
 COMMANDS = {}
 COMMANDS_CONFIG = {}
@@ -29,7 +29,7 @@ def send(host, message):
     host.send("{}\r\n".format(message).encode('utf-8'))
     log(message)
 
-def sendSilent(host, message): #sends that don't need logging
+def send_silent(host, message): #sends that don't need logging
     IRC.send("{}\r\n".format(message).encode('utf-8')) 
 
 def say(host, channel, message):
@@ -42,37 +42,39 @@ def join(host, channel):
     send(host, "JOIN " + channel)
 
 def log(message):
-    print message
+    print(message)
     logging.info(message)
 
 def get_config():
-    #TODO: Make into a real setting config object dealio
-    config = {}
-    config["server"] = SERVER
-    config["port"] = PORT
-    config["nick"] = NICK
-    config["chan"] = CHAN
-    config["prefix"] = PREFIX
+    global CONFIG
+    if CONFIG == None:
+        with open('config.json') as config_file:    
+            CONFIG = json.load(config_file)
+        with open('perms.json') as perms_file:
+            CONFIG["perms"] = json.load(perms_file)
 
-    return config
+    return CONFIG
 
 ##### OVERHEAD METHODS #####
 
 def connect():
     log("Connecting...")
 
-    IRC.connect((SERVER, PORT))
+    config = get_config()
 
-    send(IRC, "NICK " + NICK)
-    send(IRC, "USER " + USER + " " + SERVER + " moses :" + NICK)
+    IRC.connect((config["server"], config["port"]))
+
+    send(IRC, "NICK " + config["nick"])
+    send(IRC, "USER " + config["user"] + " " + config["server"] + " moses :" + config["nick"])
 
 def import_commands():
     command_list = [f for f in os.listdir("commands")]
 
     command_list.remove("__init__.py")
+    command_list.remove("__pycache__")
 
     for command in command_list:
-        if command[-4:] != ".pyc":
+        if command[-4:] != ".pyc" and command[0] != ".":
             command = command[:-3]
 
             log("Importing " + command + "...")
@@ -105,7 +107,7 @@ def parse_message():
  
         # Special Checks
         if message[0] == "PING ":
-            sendSilent(IRC, "PONG")
+            send_silent(IRC, "PONG")
             continue
 
         if message[0] == "ERROR ":
@@ -127,12 +129,20 @@ def parse_message():
             if len(meta) > 2 and len(message) > 1: 
                 command["message_type"] = meta[1]
                 command["channel"] = meta[2]
+
+                #private message
+                if len(command["channel"]) > 0 and command["channel"][0] != '#':
+                    command["channel"] = command["nick"]
+
                 command["message"] = message[1].rstrip()  
                 message = message[1].split(" ")
 
                 command["options"] = parse_args(command["message"])
 
-                if command["message"][0] == PREFIX:
+                if command["user"] in get_config()["perms"]["blacklist"]:
+                    return
+
+                if command["message"][0] == get_config()["prefix"]:
                     command["command"] = message[0][1:].rstrip() 
                     handle_command(command)
                 else:
@@ -155,6 +165,13 @@ def handle_command(command):
             + command["message"]
     )
     try:
+        if "perm" in COMMANDS_CONFIG[command["command"]]:
+            perm = COMMANDS_CONFIG[command["command"]]
+            if perm == "whitelist" and command["user"] not in get_config["perms"]["whitelist"] and command["user"] not in get_config["perms"]["admin"]:
+                return
+            if perm == "admin" and command["user"] not in get_config["perms"]["admin"]:
+                return 
+
         COMMANDS[command["command"]](command, COMMANDS_CONFIG[command["command"]], get_config())
     except KeyError:
         pass
@@ -167,18 +184,21 @@ def parse_args(command):
     initial_args = True
     option_next = False
     for i in range(1, len(nodes)):
-        if nodes[i][0] == "-":
-            initial_args = False
-            option_next = True
-        if initial_args:
-            args.append(nodes[i])
-        else:
-            if option_next and i < len(nodes) - 1:
-                options[nodes[i][1:]] = nodes[i + 1]
-                option_next = False
-            elif option_next:
-                options[nodes[i][1:]] = True
-                option_next = False
+        try:
+            if nodes[i][0] == "-":
+                initial_args = False
+                option_next = True
+            if initial_args:
+                args.append(nodes[i])
+            else:
+                if option_next and i < len(nodes) - 1:
+                    options[nodes[i][1:]] = nodes[i + 1]
+                    option_next = False
+                elif option_next:
+                    options[nodes[i][1:]] = True
+                    option_next = False
+        except IndexError: #blank piece
+            pass
 
     options["args"] = args
     return options
@@ -186,14 +206,18 @@ def parse_args(command):
 ### COMMANDS ###
 
 if __name__ == "__main__":
+    global CONFIG
+    CONFIG = None
 
-    logging.basicConfig(filename=NICK + '.log', level=logging.DEBUG, format="%(message)s")
+    logging.basicConfig(filename = get_config()["nick"] + '.log', level=logging.DEBUG, format="%(message)s")
 
     import_commands()
 
     IRC = socket.socket() #defined here so other methods can see
     connect()
-    join(IRC, CHAN)
+
+    for chan in CONFIG["channels"]:
+        join(IRC, chan)
 
     while(True):
         parse_message()

@@ -1,0 +1,10 @@
+{
+    "server": "localhost",
+    "port": 6667,
+    "nick": "rose",
+    "user": "rose",
+    "channels": [
+                            "#rose"
+                        ],
+    "prefix": "!"
+}

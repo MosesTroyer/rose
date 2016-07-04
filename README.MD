@@ -1,8 +1,6 @@
-Rosencrantz is an IRC bot written to do whatever functions I randomly want.
+Rose is an IRC bot written to do whatever functions I randomly want.
 
 Some code liberally borrowed from github.com/ccowmu/botler , cclub++
-
-Please ignore code quality.
 
 All commands are placed in the commands directory. Every command should have 2 methods: 1 with the same name as the file itself, and get_config() to store information about the command.
 

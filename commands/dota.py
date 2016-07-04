@@ -2,6 +2,8 @@ import rose as bot
 import json
 import requests
 
+#TODO last played given player id
+
 def get_config():
     config = {}
     config["man"] = "Get Dota 2 Match details"
@@ -15,7 +17,7 @@ def dota(command, config, bot_config):
     except IndexError:
         return
 
-    url = "https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/V001/?key=F6BFB3D20DA8E47C5EFEF9F432A90F44&match_id=" + match
+    url = "https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/V001/?key=2D080924B952D141CEBA3FB6B15AB6EC&match_id=" + match
 
     response = requests.get(url)
 
@@ -53,6 +55,6 @@ def dota(command, config, bot_config):
 
         
     else:
-        myResponse.raise_for_status()    
+        response.raise_for_status()    
 
     pass

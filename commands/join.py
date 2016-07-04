@@ -3,6 +3,7 @@ import rose as bot
 def get_config():
     config = {}
     config["man"] = "Join the given Channel"
+    config["perm"] = "whitelist"
 
     return config
 
